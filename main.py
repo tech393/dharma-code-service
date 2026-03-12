@@ -594,7 +594,7 @@ def parse_reading(text):
     sections = {}
     lines    = text.strip().split("\n")
 
-    # Markers that indicate section boundaries — must match system-prompt.txt headings exactly
+    # Markers that indicate section boundaries
     markers = {
         "section1": ["You Are an Awakened Guide", "YOU ARE AN AWAKENED GUIDE"],
         "section2": ["Your Gifts", "YOUR GIFTS"],
