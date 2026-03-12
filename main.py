@@ -703,13 +703,9 @@ def generate():
 
     try:
         pdf_bytes = build_pdf(name, birth_date, birth_time, birth_place, reading_text)
+        pdf_b64   = base64.b64encode(pdf_bytes).decode("utf-8")
         filename  = "dharma-code-" + name.lower().replace(" ", "-") + ".pdf"
-        from flask import Response
-        return Response(
-            pdf_bytes,
-            mimetype="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-        )
+        return jsonify({"pdf_base64": pdf_b64, "filename": filename})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
