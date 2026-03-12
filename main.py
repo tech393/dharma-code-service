@@ -9,6 +9,7 @@ Deploy once to Railway. Make.com calls it automatically.
 """
 
 import io
+import re
 import base64
 import math
 import random
@@ -628,8 +629,18 @@ def parse_reading(text):
     return sections
 
 
+def clean_markdown(text):
+    """Strip markdown formatting from Claude output."""
+    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
+    text = re.sub(r'\*(.+?)\*', r'\1', text)
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    text = re.sub(r'^---+$', '', text, flags=re.MULTILINE)
+    return text
+
+
 def render_text_block(text, S, sp, bold_first=False):
     """Convert a block of plain text into Paragraph flowables."""
+    text = clean_markdown(text)
     elements   = []
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
     for i, para in enumerate(paragraphs):
