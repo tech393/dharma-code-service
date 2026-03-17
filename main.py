@@ -3,16 +3,17 @@ Dharma Code™ PDF Microservice
 Awakened Academy · Liberated Life LLC
 
 Receives: name, birth_date, birth_time, birth_place, reading_text
-Returns:  PDF as base64 string
+Returns:  PDF as binary file (via /generate-file) — recommended for Make.com
+          PDF as base64 JSON (via /generate) — legacy endpoint
 
-Deploy once to Railway. Make.com calls it automatically.
+Deploy once to Railway. Make.com calls /generate-file automatically.
 """
 
 import io
 import base64
 import math
 import random
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -514,8 +515,6 @@ def build_pdf(name, birth_date, birth_time, birth_place, reading_text):
     sp = lambda n=1: Spacer(1, n * 3.5 * mm)
 
     # ── Parse reading into sections ────────────────────────────────────────────
-    # The reading from Claude comes as plain text.
-    # We split on section headings and render accordingly.
     sections = parse_reading(reading_text)
 
     story = [
@@ -576,7 +575,7 @@ def build_pdf(name, birth_date, birth_time, birth_place, reading_text):
             ("20 yrs", "Teaching"),
             ("85K+",   "5-Star Reviews"),
         ]),
-        sp(0.5),
+        sp(1),
         Paragraph("Developed over 20 years by the founders of spiritual life coaching.", S["closing"]),
     ]
 
@@ -594,8 +593,6 @@ def parse_reading(text):
     sections = {}
     lines    = text.strip().split("\n")
 
-    # Markers that indicate section boundaries
-    # These match the headings Claude actually writes per the system prompt
     markers = {
         "section1": ["You Are an Awakened Guide", "AWAKENED GUIDE"],
         "section2": ["Your Gifts", "YOUR GIFTS"],
@@ -612,8 +609,6 @@ def parse_reading(text):
         matched = False
         for sec, keywords in markers.items():
             for kw in keywords:
-                # Require the line to essentially BE the heading, not just contain it
-                # (stripped line equals keyword, or stripped line starts with keyword and is short)
                 if (stripped.lower() == kw.lower() or
                         (stripped.lower().startswith(kw.lower()) and len(stripped) < 50)):
                     if buffer:
@@ -640,7 +635,6 @@ def render_text_block(text, S, sp, bold_first=False):
     for i, para in enumerate(paragraphs):
         if not para:
             continue
-        # Arrow lines
         if para.startswith("→") or para.startswith("->"):
             for line in para.split("\n"):
                 line = line.strip()
@@ -648,7 +642,6 @@ def render_text_block(text, S, sp, bold_first=False):
                     elements.append(Paragraph(line, ParagraphStyle("arrow",
                         fontName="Helvetica", fontSize=11, leading=17,
                         textColor=CREAM, spaceAfter=5, leftIndent=12)))
-        # Checkmark lines
         elif para.startswith("✓") or para.startswith("✔"):
             for line in para.split("\n"):
                 line = line.strip()
@@ -656,10 +649,8 @@ def render_text_block(text, S, sp, bold_first=False):
                     elements.append(Paragraph(line, ParagraphStyle("check",
                         fontName="Helvetica", fontSize=11, leading=17,
                         textColor=GOLD_BRIGHT, spaceAfter=5, leftIndent=12)))
-        # First paragraph bold
         elif i == 0 and bold_first:
             elements.append(Paragraph(para, S["body_bold"]))
-        # Italic if short (closing lines)
         elif len(para) < 120 and para.endswith(".") and i == len(paragraphs) - 1:
             elements.append(Paragraph(para, S["body_italic"]))
         else:
@@ -667,10 +658,61 @@ def render_text_block(text, S, sp, bold_first=False):
     return elements
 
 
-# ── Flask endpoint ─────────────────────────────────────────────────────────────
+# ── Flask endpoints ────────────────────────────────────────────────────────────
+
+@app.route("/generate-file", methods=["POST"])
+def generate_file():
+    """
+    RECOMMENDED ENDPOINT FOR MAKE.COM
+
+    Returns the PDF as a direct binary file download (application/pdf).
+    Use this with Make.com's "HTTP - Get a File" module, then map the
+    result directly to the Gmail attachment — no toBinary() needed.
+
+    POST body (JSON):
+    {
+      "name":         "Emma Calloway",
+      "birth_date":   "March 14, 1985",
+      "birth_time":   "7:23 AM",
+      "birth_place":  "Vancouver, Canada",
+      "reading_text": "Hi Emma, ..."
+    }
+
+    Returns: PDF binary with Content-Type: application/pdf
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON body"}), 400
+
+    required = ["name", "birth_date", "birth_place", "reading_text"]
+    for field in required:
+        if field not in data:
+            return jsonify({"error": f"Missing field: {field}"}), 400
+
+    name         = data["name"]
+    birth_date   = data.get("birth_date", "")
+    birth_time   = data.get("birth_time", "unknown")
+    birth_place  = data.get("birth_place", "")
+    reading_text = data["reading_text"]
+    filename     = "dharma-code-" + name.lower().replace(" ", "-") + ".pdf"
+
+    try:
+        pdf_bytes = build_pdf(name, birth_date, birth_time, birth_place, reading_text)
+        response  = make_response(pdf_bytes)
+        response.headers["Content-Type"]        = "application/pdf"
+        response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response.headers["Content-Length"]      = str(len(pdf_bytes))
+        return response
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/generate", methods=["POST"])
 def generate():
     """
+    LEGACY ENDPOINT — returns PDF as base64 JSON.
+    Kept for backwards compatibility. Use /generate-file for Make.com.
+
     POST body (JSON):
     {
       "name":         "Emma Calloway",
