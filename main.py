@@ -343,12 +343,13 @@ class PullQuote(Flowable):
 
 
 class CTAStep(Flowable):
-    def __init__(self, number, title, body, link=None):
+    def __init__(self, number, title, body, link=None, url=None):
         super().__init__()
         self._num   = number
         self._title = title
         self._body  = body
         self._link  = link
+        self._url   = url
 
     def wrap(self, aw, ah):
         self.width  = aw
@@ -391,6 +392,8 @@ class CTAStep(Flowable):
             c.setFillColor(GOLD)
             c.setFont("Helvetica-Bold", 9.5)
             c.drawString(17 * mm, 3.5 * mm, self._link + "  →")
+            if self._url:
+                c.linkURL(self._url, (0, 0, self.width, self.height), relative=0)
         c.restoreState()
 
     @property
@@ -399,10 +402,12 @@ class CTAStep(Flowable):
 
 
 class CTAButtons(Flowable):
-    def __init__(self, b1, b2):
+    def __init__(self, b1, b2, url1=None, url2=None):
         super().__init__()
         self._b1 = b1
         self._b2 = b2
+        self._url1 = url1
+        self._url2 = url2
 
     def wrap(self, aw, ah):
         self.width  = aw
@@ -419,6 +424,8 @@ class CTAButtons(Flowable):
         c.setFillColor(DEEP_SPACE)
         c.setFont("Helvetica-Bold", 9.5)
         c.drawCentredString(bw / 2, 6 * mm, self._b1)
+        if self._url1:
+            c.linkURL(self._url1, (0, 1.5 * mm, bw, 1.5 * mm + bh), relative=0)
         c.setFillColor(colors.Color(0.18, 0.08, 0.35, alpha=0.90))
         c.roundRect(bw + 6 * mm, 1.5 * mm, bw, bh, 4, fill=1, stroke=0)
         c.setStrokeColor(GOLD)
@@ -427,6 +434,8 @@ class CTAButtons(Flowable):
         c.setFillColor(GOLD_BRIGHT)
         c.setFont("Helvetica-Bold", 9.5)
         c.drawCentredString(bw + 6 * mm + bw / 2, 6 * mm, self._b2)
+        if self._url2:
+            c.linkURL(self._url2, (bw + 6 * mm, 1.5 * mm, bw + 6 * mm + bw, 1.5 * mm + bh), relative=0)
         c.restoreState()
 
 
@@ -555,19 +564,23 @@ def build_pdf(name, birth_date, birth_time, birth_place, reading_text):
         CTAStep("01",
             "Access Your Free Awakened Abundance Course",
             "Your Sacred Abundance Calculator, 6 income streams, the 4 Keys, and 3 guided meditations. One click — no login required.",
-            "Access Free Course"),
+            "Access Free Course",
+            url="https://www.awakened.academy/offers/aL2pWx35"),
         sp(0.5),
         CTAStep("02",
             "Book Your Free Sacred Abundance Coaching Call",
             "A certified guide has your full reading. In 30 minutes they walk you through your exact path and your real first step.",
-            "Book Your Free Session"),
+            "Book Your Free Session",
+            url="https://links.awakenedacademy.com/widget/booking/9G3lOXbWVOP5TmT6xy5r"),
         sp(0.5),
         CTAStep("03",
             "Begin",
             "Not when you feel ready. Now. Your chart says now. Your gifts say now.",
             None),
         sp(1),
-        CTAButtons("Access Free Course  →", "Book Your Free Session  →"),
+        CTAButtons("Access Free Course  →", "Book Your Free Session  →",
+            url1="https://www.awakened.academy/offers/aL2pWx35",
+            url2="https://links.awakenedacademy.com/widget/booking/9G3lOXbWVOP5TmT6xy5r"),
         sp(1),
         StatsBar([
             ("1,250+", "Students"),
