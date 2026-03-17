@@ -393,7 +393,11 @@ class CTAStep(Flowable):
             c.setFont("Helvetica-Bold", 9.5)
             c.drawString(17 * mm, 3.5 * mm, self._link + "  →")
             if self._url:
-                c.linkURL(self._url, (0, 0, self.width, self.height), relative=0)
+                x1 = 17 * mm
+                y1 = 2 * mm
+                x2 = self.width - 5 * mm
+                y2 = 7 * mm
+                c.linkURL(self._url, (x1, y1, x2, y2), relative=1)
         c.restoreState()
 
     @property
@@ -578,9 +582,19 @@ def build_pdf(name, birth_date, birth_time, birth_place, reading_text):
             "Not when you feel ready. Now. Your chart says now. Your gifts say now.",
             None),
         sp(1),
-        CTAButtons("Access Free Course  →", "Book Your Free Session  →",
-            url1="https://www.awakened.academy/offers/aL2pWx35",
-            url2="https://links.awakenedacademy.com/widget/booking/9G3lOXbWVOP5TmT6xy5r"),
+        Paragraph(
+            '<a href="https://www.awakened.academy/offers/aL2pWx35" color="#08080e"><font color="#08080e">Access Free Course  →</font></a>',
+            ParagraphStyle("btn1", fontName="Helvetica-Bold", fontSize=11, leading=16,
+                textColor=DEEP_SPACE, backColor=GOLD, alignment=TA_CENTER,
+                borderPadding=(8, 20, 8, 20), spaceAfter=8)
+        ),
+        Paragraph(
+            '<a href="https://links.awakenedacademy.com/widget/booking/9G3lOXbWVOP5TmT6xy5r"><font color="#F0CC7A">Book Your Free Session  →</font></a>',
+            ParagraphStyle("btn2", fontName="Helvetica-Bold", fontSize=11, leading=16,
+                textColor=GOLD_BRIGHT, alignment=TA_CENTER,
+                borderPadding=(8, 20, 8, 20), spaceAfter=8,
+                borderWidth=1, borderColor=GOLD, borderRadius=4)
+        ),
         sp(1),
         StatsBar([
             ("1,250+", "Students"),
