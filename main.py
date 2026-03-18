@@ -3,10 +3,9 @@ Dharma Code™ PDF Microservice
 Awakened Academy · Liberated Life LLC
 
 Receives: name, birth_date, birth_time, birth_place, reading_text
-Returns:  PDF as binary file (via /generate-file) — recommended for Make.com
-          PDF as base64 JSON (via /generate) — legacy endpoint
+Returns:  PDF as base64 string
 
-Deploy once to Railway. Make.com calls /generate-file automatically.
+Deploy once to Railway. Make.com calls it automatically.
 """
 
 import io
@@ -343,13 +342,12 @@ class PullQuote(Flowable):
 
 
 class CTAStep(Flowable):
-    def __init__(self, number, title, body, link=None, url=None):
+    def __init__(self, number, title, body, link=None):
         super().__init__()
         self._num   = number
         self._title = title
         self._body  = body
         self._link  = link
-        self._url   = url
 
     def wrap(self, aw, ah):
         self.width  = aw
@@ -392,12 +390,6 @@ class CTAStep(Flowable):
             c.setFillColor(GOLD)
             c.setFont("Helvetica-Bold", 9.5)
             c.drawString(17 * mm, 3.5 * mm, self._link + "  →")
-            if self._url:
-                x1 = 17 * mm
-                y1 = 2 * mm
-                x2 = self.width - 5 * mm
-                y2 = 7 * mm
-                c.linkURL(self._url, (x1, y1, x2, y2), relative=1)
         c.restoreState()
 
     @property
@@ -406,12 +398,10 @@ class CTAStep(Flowable):
 
 
 class CTAButtons(Flowable):
-    def __init__(self, b1, b2, url1=None, url2=None):
+    def __init__(self, b1, b2):
         super().__init__()
         self._b1 = b1
         self._b2 = b2
-        self._url1 = url1
-        self._url2 = url2
 
     def wrap(self, aw, ah):
         self.width  = aw
@@ -428,8 +418,6 @@ class CTAButtons(Flowable):
         c.setFillColor(DEEP_SPACE)
         c.setFont("Helvetica-Bold", 9.5)
         c.drawCentredString(bw / 2, 6 * mm, self._b1)
-        if self._url1:
-            c.linkURL(self._url1, (0, 1.5 * mm, bw, 1.5 * mm + bh), relative=0)
         c.setFillColor(colors.Color(0.18, 0.08, 0.35, alpha=0.90))
         c.roundRect(bw + 6 * mm, 1.5 * mm, bw, bh, 4, fill=1, stroke=0)
         c.setStrokeColor(GOLD)
@@ -438,8 +426,6 @@ class CTAButtons(Flowable):
         c.setFillColor(GOLD_BRIGHT)
         c.setFont("Helvetica-Bold", 9.5)
         c.drawCentredString(bw + 6 * mm + bw / 2, 6 * mm, self._b2)
-        if self._url2:
-            c.linkURL(self._url2, (bw + 6 * mm, 1.5 * mm, bw + 6 * mm + bw, 1.5 * mm + bh), relative=0)
         c.restoreState()
 
 
@@ -482,23 +468,23 @@ class StatsBar(Flowable):
 def make_styles():
     return {
         "section_label": ParagraphStyle("section_label",
-            fontName="Helvetica", fontSize=8, leading=12,
-            textColor=GOLD, alignment=TA_CENTER, spaceBefore=10, spaceAfter=6),
+            fontName="Helvetica", fontSize=10, leading=15,
+            textColor=GOLD, alignment=TA_CENTER, spaceBefore=16, spaceAfter=10),
         "body": ParagraphStyle("body",
-            fontName="Helvetica", fontSize=12, leading=20,
-            textColor=CREAM, spaceAfter=12, alignment=TA_JUSTIFY),
+            fontName="Helvetica", fontSize=15, leading=26,
+            textColor=CREAM, spaceAfter=20, alignment=TA_JUSTIFY),
         "body_bold": ParagraphStyle("body_bold",
-            fontName="Helvetica-Bold", fontSize=13, leading=20,
-            textColor=STAR_WHITE, spaceAfter=8),
+            fontName="Helvetica-Bold", fontSize=16, leading=26,
+            textColor=STAR_WHITE, spaceAfter=16),
         "body_italic": ParagraphStyle("body_italic",
-            fontName="Helvetica-Oblique", fontSize=12, leading=20,
-            textColor=GOLD_BRIGHT, spaceAfter=10, alignment=TA_JUSTIFY),
+            fontName="Helvetica-Oblique", fontSize=15, leading=26,
+            textColor=GOLD_BRIGHT, spaceAfter=16, alignment=TA_JUSTIFY),
         "next_label": ParagraphStyle("next_label",
-            fontName="Helvetica", fontSize=8, leading=12,
-            textColor=GOLD, alignment=TA_CENTER, spaceBefore=6, spaceAfter=14),
+            fontName="Helvetica", fontSize=10, leading=15,
+            textColor=GOLD, alignment=TA_CENTER, spaceBefore=10, spaceAfter=18),
         "closing": ParagraphStyle("closing",
-            fontName="Helvetica-Oblique", fontSize=10, leading=15,
-            textColor=MUTED, alignment=TA_CENTER, spaceAfter=4),
+            fontName="Helvetica-Oblique", fontSize=12, leading=18,
+            textColor=MUTED, alignment=TA_CENTER, spaceAfter=8),
     }
 
 
@@ -520,14 +506,16 @@ def build_pdf(name, birth_date, birth_time, birth_place, reading_text):
 
     cover_frame = Frame(margin, 0, W - 2 * margin, H, id="cover")
     cover_tpl   = PageTemplate("cover", frames=[cover_frame], onPage=cover_bg)
-    inner_frame = Frame(margin, 14 * mm, W - 2 * margin, H - 27 * mm, id="inner")
+    inner_frame = Frame(margin, 20 * mm, W - 2 * margin, H - 38 * mm, id="inner")
     inner_tpl   = PageTemplate("inner", frames=[inner_frame], onPage=inner_bg)
     doc.addPageTemplates([cover_tpl, inner_tpl])
 
     S  = make_styles()
-    sp = lambda n=1: Spacer(1, n * 3.5 * mm)
+    sp = lambda n=1: Spacer(1, n * 6 * mm)
 
     # ── Parse reading into sections ────────────────────────────────────────────
+    # The reading from Claude comes as plain text.
+    # We split on section headings and render accordingly.
     sections = parse_reading(reading_text)
 
     story = [
@@ -538,16 +526,18 @@ def build_pdf(name, birth_date, birth_time, birth_place, reading_text):
     ]
 
     section_names = [
-        "You Are an Awakened Guide",
-        "Your Gifts",
-        "Your Shadow Code",
-        "What You Need",
+        "Your Spiritual Birth Gifts",
+        "Revealing Your Shadow",
+        "Your Coaching Path",
+        "Your Timing",
     ]
 
-    # Opening block (before section 1)
+    # Opening block (before section 1) — sits alone on page 1
     if "opening" in sections:
         story += render_text_block(sections["opening"], S, sp, bold_first=True)
+        story.append(sp(2))
         story.append(CosmicDivider())
+        story.append(PageBreak())
 
     # Numbered sections
     for i, key in enumerate(["section1", "section2", "section3", "section4"], 1):
@@ -557,53 +547,49 @@ def build_pdf(name, birth_date, birth_time, birth_place, reading_text):
             story += render_text_block(sections[key], S, sp, bold_first=True)
             if key == "section1":
                 story.append(sp(0.5))
-                story.append(PullQuote("Your hardest years are your credential."))
+                story.append(PullQuote("Your gifts are real. Your path is already forming."))
             if i < 4:
                 story.append(CosmicDivider())
 
-    # CTA / Next Steps
+    # CTA / Next Steps — text only, no links
+    cta_body = ParagraphStyle("cta_body",
+        fontName="Helvetica", fontSize=14, leading=24,
+        textColor=CREAM, spaceAfter=16, alignment=TA_CENTER)
+    cta_bold = ParagraphStyle("cta_bold",
+        fontName="Helvetica-Bold", fontSize=16, leading=26,
+        textColor=GOLD_BRIGHT, spaceAfter=12, alignment=TA_CENTER)
+    cta_small = ParagraphStyle("cta_small",
+        fontName="Helvetica-Oblique", fontSize=12, leading=18,
+        textColor=MUTED, spaceAfter=8, alignment=TA_CENTER)
+
     story += [
         CosmicDivider(),
-        Paragraph(spaced("Your Next Steps"), S["next_label"]),
-        CTAStep("01",
-            "Access Your Free Awakened Abundance Course",
-            "Your Sacred Abundance Calculator, 6 income streams, the 4 Keys, and 3 guided meditations. One click — no login required.",
-            "Access Free Course",
-            url="https://www.awakened.academy/offers/aL2pWx35"),
-        sp(0.5),
-        CTAStep("02",
-            "Book Your Free Sacred Abundance Coaching Call",
-            "A certified guide has your full reading. In 30 minutes they walk you through your exact path and your real first step.",
-            "Book Your Free Session",
-            url="https://links.awakenedacademy.com/widget/booking/9G3lOXbWVOP5TmT6xy5r"),
-        sp(0.5),
-        CTAStep("03",
-            "Begin",
-            "Not when you feel ready. Now. Your chart says now. Your gifts say now.",
-            None),
         sp(1),
-        Paragraph(
-            '<a href="https://www.awakened.academy/offers/aL2pWx35" color="#08080e"><font color="#08080e">Access Free Course  →</font></a>',
-            ParagraphStyle("btn1", fontName="Helvetica-Bold", fontSize=11, leading=16,
-                textColor=DEEP_SPACE, backColor=GOLD, alignment=TA_CENTER,
-                borderPadding=(8, 20, 8, 20), spaceAfter=8)
-        ),
-        Paragraph(
-            '<a href="https://links.awakenedacademy.com/widget/booking/9G3lOXbWVOP5TmT6xy5r"><font color="#F0CC7A">Book Your Free Session  →</font></a>',
-            ParagraphStyle("btn2", fontName="Helvetica-Bold", fontSize=11, leading=16,
-                textColor=GOLD_BRIGHT, alignment=TA_CENTER,
-                borderPadding=(8, 20, 8, 20), spaceAfter=8,
-                borderWidth=1, borderColor=GOLD, borderRadius=4)
-        ),
+        Paragraph(spaced("Your Next Step"), S["next_label"]),
+        sp(0.5),
+        Paragraph("You have seen what you carry.", cta_body),
+        Paragraph("You have seen what has been in the way.", cta_body),
+        Paragraph("The next step is a conversation.", cta_body),
+        sp(1),
+        Paragraph("Book Your Free Sacred Session", cta_bold),
+        sp(0.5),
+        Paragraph("A certified Awakened Academy guide will go deep into your full Dharma Code reading with you personally.", cta_body),
+        Paragraph("In 30 minutes you will know exactly what your gifts are worth, which path fits your specific design, and what your first real step is.", cta_body),
+        sp(0.5),
+        Paragraph("This call is free.", cta_bold),
+        Paragraph("Everything on it is built from your chart and your life.", cta_body),
+        sp(1),
+        Paragraph("Check the email that brought you this reading.", cta_bold),
+        Paragraph("Your booking link is waiting there for you.", cta_body),
         sp(1),
         StatsBar([
-            ("1,250+", "Students"),
-            ("25+",    "Countries"),
-            ("20 yrs", "Teaching"),
+            ("1,000+", "Graduates"),
             ("85K+",   "5-Star Reviews"),
+            ("20 yrs", "Teaching"),
         ]),
         sp(1),
-        Paragraph("Developed over 20 years by the founders of spiritual life coaching.", S["closing"]),
+        Paragraph("Awakened Academy. The original spiritual life coaching school. Founded 2004.", S["closing"]),
+        sp(0.5),
     ]
 
     doc.build(story)
@@ -620,24 +606,23 @@ def parse_reading(text):
     sections = {}
     lines    = text.strip().split("\n")
 
+    # Markers that indicate section boundaries
     markers = {
-        "section1": ["You Are an Awakened Guide", "AWAKENED GUIDE"],
+        "section1": ["You Are an Awakened Guide", "AWAKENED GUIDE", "Your Energy Code", "YOUR ENERGY CODE"],
         "section2": ["Your Gifts", "YOUR GIFTS"],
-        "section3": ["Your Shadow Code", "SHADOW CODE"],
+        "section3": ["Your Shadow Code", "SHADOW CODE", "YOUR SHADOW CODE"],
         "section4": ["What You Need", "WHAT YOU NEED"],
-        "cta":      ["Your Next Step", "YOUR NEXT STEP", "NEXT STEP"],
+        "cta":      ["Your Next Step", "YOUR NEXT STEP", "NEXT STEP", "NEXT STEPS"],
     }
 
     current = "opening"
     buffer  = []
 
     for line in lines:
-        stripped = line.strip()
         matched = False
         for sec, keywords in markers.items():
             for kw in keywords:
-                if (stripped.lower() == kw.lower() or
-                        (stripped.lower().startswith(kw.lower()) and len(stripped) < 50)):
+                if kw.lower() in line.lower() and len(line.strip()) < 80:
                     if buffer:
                         sections[current] = "\n".join(buffer).strip()
                     current = sec
@@ -662,22 +647,26 @@ def render_text_block(text, S, sp, bold_first=False):
     for i, para in enumerate(paragraphs):
         if not para:
             continue
+        # Arrow lines
         if para.startswith("→") or para.startswith("->"):
             for line in para.split("\n"):
                 line = line.strip()
                 if line:
                     elements.append(Paragraph(line, ParagraphStyle("arrow",
-                        fontName="Helvetica", fontSize=11, leading=17,
-                        textColor=CREAM, spaceAfter=5, leftIndent=12)))
+                        fontName="Helvetica", fontSize=13, leading=20,
+                        textColor=CREAM, spaceAfter=8, leftIndent=14)))
+        # Checkmark lines
         elif para.startswith("✓") or para.startswith("✔"):
             for line in para.split("\n"):
                 line = line.strip()
                 if line:
                     elements.append(Paragraph(line, ParagraphStyle("check",
-                        fontName="Helvetica", fontSize=11, leading=17,
-                        textColor=GOLD_BRIGHT, spaceAfter=5, leftIndent=12)))
+                        fontName="Helvetica", fontSize=13, leading=20,
+                        textColor=GOLD_BRIGHT, spaceAfter=8, leftIndent=14)))
+        # First paragraph bold
         elif i == 0 and bold_first:
             elements.append(Paragraph(para, S["body_bold"]))
+        # Italic if short (closing lines)
         elif len(para) < 120 and para.endswith(".") and i == len(paragraphs) - 1:
             elements.append(Paragraph(para, S["body_italic"]))
         else:
@@ -693,8 +682,7 @@ def generate_file():
     RECOMMENDED ENDPOINT FOR MAKE.COM
 
     Returns the PDF as a direct binary file download (application/pdf).
-    Use this with Make.com's "HTTP - Get a File" module, then map the
-    result directly to the Gmail attachment — no toBinary() needed.
+    Use with Make.com's "HTTP - Get a File" module — no toBinary() needed.
 
     POST body (JSON):
     {
@@ -704,8 +692,6 @@ def generate_file():
       "birth_place":  "Vancouver, Canada",
       "reading_text": "Hi Emma, ..."
     }
-
-    Returns: PDF binary with Content-Type: application/pdf
     """
     data = request.get_json()
     if not data:
