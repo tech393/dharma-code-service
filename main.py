@@ -409,16 +409,11 @@ def build_pdf(name, birth_date, birth_time, birth_place, reading_text):
             "Your booking link is waiting there. Use it to schedule your free "
             "30-minute Sacred Session with a certified guide who has your full Dharma Code.",
             S["cta_body"]),
-        sp(0.5),
-        Paragraph("Or book directly:", S["cta_body"]),
-        sp(0.5),
-        CTAStep("01",
+                CTAStep("01",
             "Book Your Free Sacred Session",
             "30 minutes. Free. A certified guide with your complete Dharma Code "
             "walks you through your exact path and your real first step.",
-            "Book Your Free Sacred Session",
-            url=BOOKING_URL),
-        sp(1),
+                    sp(1),
         StatsBar([("1,000+","Graduates"),("85K+","5-Star Reviews"),("20 yrs","Teaching")]),
         sp(1),
         Paragraph(
