@@ -289,7 +289,7 @@ class CTAStep(Flowable):
         if line: c.drawString(17*mm, y, line)
         if self._link:
             c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 9.5)
-            c.drawString(17*mm, 3.5*mm, self._link+" \u2192")
+            c.drawString(17*mm, 3.5*mm, self._link)
         c.restoreState()
 
 
