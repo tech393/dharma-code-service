@@ -1,7 +1,6 @@
 """
 Dharma Code(tm) PDF Microservice
 Awakened Academy . Liberated Life LLC
-v9.0 - Two Superpowers, Clickable CTA
 
 /generate-file  -> PDF binary (recommended for Make.com)
 /generate       -> PDF base64 JSON (legacy)
@@ -32,7 +31,6 @@ LAVENDER    = colors.HexColor("#B39DDB")
 MUTED       = colors.HexColor("#7B6A9A")
 STAR_WHITE  = colors.HexColor("#F8F4FF")
 W, H = A4
-BOOKING_URL = "https://links.awakenedacademy.com/widget/booking/9G3lOXbWVOP5TmT6xy5r"
 
 
 def spaced(text):
@@ -259,10 +257,10 @@ class PullQuote(Flowable):
 
 
 class CTAStep(Flowable):
-    def __init__(self, number, title, body, link=None, url=None):
+    def __init__(self, number, title, body, link=None):
         super().__init__()
         self._num=number; self._title=title
-        self._body=body; self._link=link; self._url=url
+        self._body=body; self._link=link
 
     def wrap(self, aw, ah):
         self.width=aw; self.height=26*mm; return self.width, self.height
@@ -292,8 +290,6 @@ class CTAStep(Flowable):
         if self._link:
             c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 9.5)
             c.drawString(17*mm, 3.5*mm, self._link+" \u2192")
-            if self._url:
-                c.linkURL(self._url, (17*mm, 2*mm, self.width-5*mm, 7*mm), relative=1)
         c.restoreState()
 
 
@@ -326,32 +322,20 @@ class StatsBar(Flowable):
 def make_styles():
     return {
         "body": ParagraphStyle("body",
-            fontName="Helvetica", fontSize=15, leading=26,
-            textColor=CREAM, spaceAfter=20, alignment=TA_JUSTIFY),
+            fontName="Helvetica", fontSize=12, leading=20,
+            textColor=CREAM, spaceAfter=12, alignment=TA_JUSTIFY),
         "body_bold": ParagraphStyle("body_bold",
-            fontName="Helvetica-Bold", fontSize=16, leading=26,
-            textColor=STAR_WHITE, spaceAfter=16),
+            fontName="Helvetica-Bold", fontSize=13, leading=20,
+            textColor=STAR_WHITE, spaceAfter=8),
         "body_italic": ParagraphStyle("body_italic",
-            fontName="Helvetica-Oblique", fontSize=15, leading=26,
-            textColor=GOLD_BRIGHT, spaceAfter=16, alignment=TA_JUSTIFY),
-        "superpower_title": ParagraphStyle("superpower_title",
-            fontName="Helvetica-Bold", fontSize=16, leading=24,
-            textColor=GOLD_BRIGHT, spaceAfter=6, spaceBefore=22),
-        "superpower_def": ParagraphStyle("superpower_def",
-            fontName="Helvetica-Oblique", fontSize=13, leading=20,
-            textColor=LAVENDER, spaceAfter=14),
+            fontName="Helvetica-Oblique", fontSize=12, leading=20,
+            textColor=GOLD_BRIGHT, spaceAfter=10, alignment=TA_JUSTIFY),
         "next_label": ParagraphStyle("next_label",
-            fontName="Helvetica", fontSize=10, leading=15,
-            textColor=GOLD, alignment=TA_CENTER, spaceBefore=10, spaceAfter=18),
+            fontName="Helvetica", fontSize=8, leading=12,
+            textColor=GOLD, alignment=TA_CENTER, spaceBefore=6, spaceAfter=14),
         "closing": ParagraphStyle("closing",
-            fontName="Helvetica-Oblique", fontSize=12, leading=18,
-            textColor=MUTED, alignment=TA_CENTER, spaceAfter=8),
-        "cta_body": ParagraphStyle("cta_body",
-            fontName="Helvetica", fontSize=14, leading=24,
-            textColor=CREAM, spaceAfter=14, alignment=TA_CENTER),
-        "cta_bold": ParagraphStyle("cta_bold",
-            fontName="Helvetica-Bold", fontSize=16, leading=26,
-            textColor=GOLD_BRIGHT, spaceAfter=12, alignment=TA_CENTER),
+            fontName="Helvetica-Oblique", fontSize=10, leading=15,
+            textColor=MUTED, alignment=TA_CENTER, spaceAfter=4),
     }
 
 
@@ -362,11 +346,11 @@ def build_pdf(name, birth_date, birth_time, birth_place, reading_text):
     doc._recipient_name=name
     cover_frame=Frame(margin,0,W-2*margin,H,id="cover")
     cover_tpl=PageTemplate("cover",frames=[cover_frame],onPage=cover_bg)
-    inner_frame=Frame(margin,20*mm,W-2*margin,H-38*mm,id="inner")
+    inner_frame=Frame(margin,14*mm,W-2*margin,H-27*mm,id="inner")
     inner_tpl=PageTemplate("inner",frames=[inner_frame],onPage=inner_bg)
     doc.addPageTemplates([cover_tpl, inner_tpl])
     S=make_styles()
-    sp=lambda n=1: Spacer(1, n*6*mm)
+    sp=lambda n=1: Spacer(1, n*3.5*mm)
     sections=parse_reading(reading_text)
     story=[
         NextPageTemplate("cover"),
@@ -376,50 +360,49 @@ def build_pdf(name, birth_date, birth_time, birth_place, reading_text):
     ]
     section_names=[
         "You Are an Awakened Guide",
-        "Your Superpowers",
+        "Your Gifts",
         "Your Shadow Code",
         "What You Need",
     ]
     if "opening" in sections:
         story += render_text_block(sections["opening"], S, sp, bold_first=True)
-        story.append(sp(2)); story.append(CosmicDivider()); story.append(PageBreak())
+        story.append(CosmicDivider())
     for i, key in enumerate(["section1","section2","section3","section4"], 1):
         if key in sections:
             story.append(SectionHeader(i, section_names[i-1]))
             story.append(sp(0.5))
-            if key == "section2":
-                story += render_superpowers_block(sections[key], S, sp)
-            else:
-                story += render_text_block(sections[key], S, sp, bold_first=True)
+            story += render_text_block(sections[key], S, sp, bold_first=True)
             if key == "section1":
                 story.append(sp(0.5))
                 story.append(PullQuote("Your hardest years are your credential."))
             if i < 4:
                 story.append(CosmicDivider())
     story += [
-        CosmicDivider(), sp(1),
-        Paragraph(spaced("Your Next Step"), S["next_label"]),
+        CosmicDivider(),
+        Paragraph(spaced("Your Next Steps"), S["next_label"]),
+        CTAStep("01",
+            "Access Your Free Awakened Abundance Course",
+            "Your Sacred Abundance Calculator, 6 income streams, the 4 Keys, and 3 guided meditations. One click — no login required.",
+            "Access Free Course"),
         sp(0.5),
-        Paragraph("You have seen what you carry.", S["cta_body"]),
-        Paragraph("You have seen what has been in the way.", S["cta_body"]),
-        Paragraph("The next step is one conversation.", S["cta_body"]),
-        sp(1),
-        Paragraph("Check your email.", S["cta_bold"]),
-        Paragraph(
-            "Your booking link is waiting there. Use it to schedule your free "
-            "30-minute Sacred Session with a certified guide who has your full Dharma Code.",
-            S["cta_body"]),
-                CTAStep("01",
-            "Book Your Free Sacred Session",
-            "30 minutes. Free. A certified guide with your complete Dharma Code "
-            "walks you through your exact path and your real first step.",
-                    sp(1),
-        StatsBar([("1,000+","Graduates"),("85K+","5-Star Reviews"),("20 yrs","Teaching")]),
-        sp(1),
-        Paragraph(
-            "Awakened Academy. The original spiritual life coaching school. Founded 2004.",
-            S["closing"]),
+        CTAStep("02",
+            "Book Your Free Sacred Abundance Coaching Call",
+            "A certified guide has your full reading. In 30 minutes they walk you through your exact path and your real first step.",
+            "Book Your Free Session"),
         sp(0.5),
+        CTAStep("03",
+            "Begin",
+            "Not when you feel ready. Now. Your chart says now. Your gifts say now.",
+            None),
+        sp(1),
+        StatsBar([
+            ("1,000+", "Graduates"),
+            ("85K+",   "5-Star Reviews"),
+            ("20 yrs", "Teaching"),
+            ("25+",    "Countries"),
+        ]),
+        sp(0.5),
+        Paragraph("Awakened Academy. The original spiritual life coaching school. Founded 2004.", S["closing"]),
     ]
     doc.build(story)
     buf.seek(0)
@@ -430,7 +413,7 @@ def parse_reading(text):
     sections={}; lines=text.strip().split("\n")
     markers={
         "section1": ["You Are an Awakened Guide","AWAKENED GUIDE"],
-        "section2": ["Your Superpowers","YOUR SUPERPOWERS","Your Gifts","YOUR GIFTS"],
+        "section2": ["Your Gifts","YOUR GIFTS","Your Superpowers","YOUR SUPERPOWERS"],
         "section3": ["Your Shadow Code","SHADOW CODE","YOUR SHADOW CODE"],
         "section4": ["What You Need","WHAT YOU NEED"],
         "cta":      ["Your Next Step","YOUR NEXT STEP","NEXT STEP","NEXT STEPS"],
@@ -450,22 +433,6 @@ def parse_reading(text):
     return sections
 
 
-def render_superpowers_block(text, S, sp):
-    elements=[]; paragraphs=[p.strip() for p in text.split("\n\n") if p.strip()]
-    for para in paragraphs:
-        if not para: continue
-        clean=para.replace("**","").replace("*","").strip()
-        if clean.lower().startswith("superpower"):
-            elements.append(Paragraph(clean, S["superpower_title"]))
-        elif para.startswith("*") and para.endswith("*") and len(para)<200:
-            elements.append(Paragraph(clean, S["superpower_def"]))
-        elif clean.lower().startswith("there are people"):
-            elements.append(Paragraph(clean, S["body_italic"]))
-        else:
-            elements.append(Paragraph(clean, S["body"]))
-    return elements
-
-
 def render_text_block(text, S, sp, bold_first=False):
     elements=[]; paragraphs=[p.strip() for p in text.split("\n\n") if p.strip()]
     for i, para in enumerate(paragraphs):
@@ -475,18 +442,18 @@ def render_text_block(text, S, sp, bold_first=False):
                 line=line.strip()
                 if line:
                     elements.append(Paragraph(line, ParagraphStyle("arrow",
-                        fontName="Helvetica",fontSize=13,leading=20,
-                        textColor=CREAM,spaceAfter=8,leftIndent=14)))
+                        fontName="Helvetica",fontSize=11,leading=17,
+                        textColor=CREAM,spaceAfter=5,leftIndent=12)))
         elif para.startswith("\u2713") or para.startswith("\u2714"):
             for line in para.split("\n"):
                 line=line.strip()
                 if line:
                     elements.append(Paragraph(line, ParagraphStyle("check",
-                        fontName="Helvetica",fontSize=13,leading=20,
-                        textColor=GOLD_BRIGHT,spaceAfter=8,leftIndent=14)))
+                        fontName="Helvetica",fontSize=11,leading=17,
+                        textColor=GOLD_BRIGHT,spaceAfter=5,leftIndent=12)))
         elif i==0 and bold_first:
             elements.append(Paragraph(para, S["body_bold"]))
-        elif len(para)<160 and para.endswith(".") and i==len(paragraphs)-1:
+        elif len(para)<120 and para.endswith(".") and i==len(paragraphs)-1:
             elements.append(Paragraph(para, S["body_italic"]))
         else:
             elements.append(Paragraph(para, S["body"]))
